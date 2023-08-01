@@ -1,0 +1,220 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <Adafruit_GFX.h>    // Core graphics library
+#include <TouchScreen.h>         //Adafruit Library
+#include <MCUFRIEND_kbv.h>   // Hardware-specific library
+#include <FreeDefaultFonts.h>
+MCUFRIEND_kbv tft;
+
+#include <Fonts/FreeSans9pt7b.h>
+#define BLACK   0x0000
+#define RED     0xF800
+#define GREEN   0x07E0
+#define WHITE   0xFFFF
+
+#define TS_MINX 101
+#define TS_MINY 141
+#define TS_MAXX 951
+#define TS_MAXY 907
+
+#define YP A2
+#define XM A3
+#define YM 8
+#define XP 9
+
+// Layout parameter
+int upLeft[4] = {0, 0, 160, 60};
+int upRight[4] = {160, 0, 320, 60};
+int midLeft[4] = {0, 60, 190, 120};
+int midRight[4] = {190, 60, 320, 120};
+int lowLeft[4] = {0, 180, 160, 240};
+int lowRight[4] = {160, 180, 320, 240};
+
+TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
+
+void drawScreen(int curFlow, int curOx, int setFlow, int setOx)
+{
+  tft.fillScreen(WHITE);
+
+  buildRect(upLeft, "BLACK", NULL);
+  buildRect(upRight, "BLACK", NULL);
+  buildRect(midLeft, "BLACK", NULL);
+  buildRect(midRight, "BLACK", NULL);
+  buildRect(lowLeft, "BLACK", NULL);
+  buildRect(lowRight, "BLACK", NULL);
+
+  showmsgXY(275, 130, 1, 'b',  &FreeSans9pt7b, "%", NULL);
+  showmsgXY(270, 160, 1, 'b',  &FreeSans9pt7b, "%", NULL);
+  // showmsgXY(210, 135, 3, 'b', &FreeSans9pt7b, NULL, 21);
+  showmsgXY(125, 130, 1, 'b', &FreeSans9pt7b, "dl/min", NULL);
+  showmsgXY(90, 160, 1, 'b', &FreeSans9pt7b, "dl/min", NULL);
+
+  showmsgXY(40, 35, 1, 'b', &FreeSans9pt7b, "+100 ml", NULL);
+  showmsgXY(40, 215, 1, 'b', &FreeSans9pt7b, "-100 ml", NULL);
+  showmsgXY(220, 35, 1, 'b', &FreeSans9pt7b, "+1 %", NULL);
+  showmsgXY(220, 215, 1, 'b', &FreeSans9pt7b, "-1 %", NULL);
+}
+
+void showmsgXY(int x, int y, int sz, char color, const GFXfont *f, const char *str, int i)
+{
+    tft.setFont(f);
+    tft.setCursor(x, y);
+    if (color =='b')
+      tft.setTextColor(BLACK);
+    if (color =='w')
+      tft.setTextColor(WHITE);
+    tft.setTextSize(sz);
+    if (str != NULL)
+      tft.println(str);
+    else if (i == 0)
+      tft.println("0");
+    else if (i > 0)
+      tft.println(i);
+}
+
+void buildRect(int dim[4], char* colorFrame, char* colorField)
+{
+  if (colorFrame != NULL)
+    tft.drawRect(dim[0], dim[1], dim[2], dim[3], colorFrame);
+  if (colorField != NULL)    
+    tft.fillRect(dim[0], dim[1], dim[2], dim[3], colorField);
+}
+
+void updateFlow(int curFlow, int setFlow, int lastFlow, int lastSetFlow)
+{
+  if (setFlow != lastSetFlow)
+  {
+  showmsgXY(50, 160, 1, 'w', &FreeSans9pt7b, NULL, lastSetFlow);
+  showmsgXY(50, 160, 1, 'b', &FreeSans9pt7b, NULL, setFlow);
+  }
+  if (lastFlow != curFlow)
+  {
+  showmsgXY(20, 130, 3, 'w', &FreeSans9pt7b, NULL, lastFlow);
+  showmsgXY(20, 130, 3, 'b', &FreeSans9pt7b, NULL, curFlow);
+  }
+}
+
+void updateOx(int curOx, int setOx, int lastOx, int lastSetOx)
+{
+  if (setOx != lastSetOx)
+  {
+    showmsgXY(240, 160, 3, 'w', &FreeSans9pt7b, NULL, lastSetOx);
+    showmsgXY(240, 160, 3, 'b', &FreeSans9pt7b, NULL, setOx);
+  }
+  if (lastOx != curOx)
+  {
+    showmsgXY(210, 135, 3, 'w', &FreeSans9pt7b, NULL, lastOx);
+    showmsgXY(210, 135, 3, 'b', &FreeSans9pt7b, NULL, curOx);
+  }
+}
+
+char *bounderys(int x, int y)
+{
+  if(x > 0 && x < 160 && y > 0 && y < 60)
+    return ("ul");
+  else if(x > 160 && x < 320 && y > 0 && y < 60)
+    return ("ur");
+  else if(x > 0 && x < 190 && y > 60 && y < 180)
+    return ("ml");
+  else if(x > 190 && x < 320 && y > 60 && y < 180)
+    return ("mr");
+  else if(x > 0 && x < 160 && y > 180 && y < 240)
+    return ("ll");
+  else if(x > 160 && x < 320 && y > 180 && y < 240)
+    return ("lr");
+}
+
+void pressButton(int x, int y, int curFlow, int curOx, int *setFlow, int *setOx)
+{
+  int lastSetFlow = *setFlow;
+  int lastFlow = curFlow;
+  int lastSetOx = *setOx;
+  int lastOx = curOx;
+  char *ret = bounderys(x, y);
+
+  if (ret == "ul")
+    *setFlow = *setFlow + 10;
+  if (ret == "ll")
+    *setFlow = *setFlow - 10;
+  if (ret == "ur" && *setOx < 100)
+    *setOx = *setOx + 1;
+  if (ret == "lr" && *setOx > 21)
+    *setOx = *setOx - 1;
+  updateFlow(curFlow, *setFlow, curFlow, lastSetFlow);
+  updateOx(curOx, *setOx, curOx, lastSetOx);
+}
+
+int   curFlow = 0;
+int   setFlow = 0;
+int   curOx = 0;
+int   setOx = 21;
+int   offsetTimer = 0;
+
+TSPoint p;  //Get touch point
+
+void setup(void)
+{
+    Serial.begin(9600);
+    uint16_t ID = tft.readID();
+    Serial.println(ID, HEX);
+    if (ID == 0xD3D3) ID = 0x9481;
+    tft.begin(ID);
+    tft.setRotation(1);
+    drawScreen(curFlow, curOx, setFlow, setOx);  
+}
+
+int surrogate_sensordata(int timer)
+{
+  if (timer == 10)
+    return (310 + (rand() % 4));
+}
+
+int timer = 0;
+int sensorData = 0;
+int procent_sat = 0;
+int sensor_val[10];
+int flow = 0;
+
+void loop(void)
+{
+  //OXYGEN SAT
+  procent_sat = round(analogRead(A10) * 0.26);
+  // FLOW
+  flow = 0;
+  for (int i = 0; i < 9; i++)
+    sensor_val[i+1] = sensor_val[i];
+  flow = 200 * ((analogRead(A11) * 0.004887) - 0.035);
+  // for (int i = 0; i < 10; i++)
+  //   flow = sensor_val[i] + flow;
+  if (flow < 0)
+    flow = 0;
+  // Hier sensor daten Einfügen und ggf mit mittelwert glätten,
+  timer++;
+  if (timer == 10)
+    timer = 0;
+
+  p = ts.getPoint(); 
+  pinMode(XM, OUTPUT);
+  pinMode(YP, OUTPUT);
+  if (p.z > ts.pressureThreshhold) 
+  {
+    p.x = map(p.x, TS_MAXX, TS_MINX, 0, 320);
+    p.y = map(p.y, TS_MAXY, TS_MINY, 0, 240);
+    pressButton(p.x, p.y, curFlow, curOx, &setFlow, &setOx);
+  }
+
+    updateFlow(flow, setFlow, curFlow, setFlow);
+    updateOx(procent_sat, setOx, curOx, setOx);
+    Serial.print("\nFlow: ");
+    Serial.print(flow);
+
+    Serial.print(" Ox: ");
+    Serial.print(procent_sat);
+    
+    curFlow = flow;
+    curOx = procent_sat;
+  
+
+  delay(1000);
+}
