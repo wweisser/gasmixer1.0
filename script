@@ -164,6 +164,20 @@ void setup(void)
     drawScreen(curFlow, curOx, setFlow, setOx);  
 }
 
+int control_pump(int val, int set_val, double power)
+{
+  double offset = (set_val / val) * 100;
+  
+  power = power + ((power - offset) / 3);
+  for(int i = 0; i < 10; i++)
+  {
+    //activate fan
+    delay(power);
+    //deaktivate fan   
+  }
+  return (power);
+}
+
 int surrogate_sensordata(int timer)
 {
   if (timer == 10)
@@ -175,6 +189,7 @@ int sensorData = 0;
 int procent_sat = 0;
 int sensor_val[10];
 int flow = 0;
+double power = 0;
 
 void loop(void)
 {
@@ -214,7 +229,7 @@ void loop(void)
     
     curFlow = flow;
     curOx = procent_sat;
-  
+    control_pump(flow, setFlow, power);
 
-  delay(1000);
+ // delay(1000);
 }
